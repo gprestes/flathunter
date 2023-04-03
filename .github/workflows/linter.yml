@@ -16,8 +16,9 @@ name: Lint Code Base
 #############################
 on:
   push:
-    branches-ignore:
+    branches:
       - 'main'
+  pull_request:
 
 ###############
 # Set the Job #
@@ -37,10 +38,10 @@ jobs:
       # Checkout the code base #
       ##########################
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       ################################
       # Run Linter against code base #
       ################################
       - name: Lint Code Base
-        uses: codders/pylint-runner-github-action@v0.0.2
+        uses: ./.github/actions/pylint-runner

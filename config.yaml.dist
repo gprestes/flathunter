@@ -47,8 +47,9 @@ filters:
 # There are often city districts in the address which
 # Google Maps does not like. Use this blacklist to remove
 # districts from the search.
-blacklist:
-  - Innenstadt
+#
+# blacklist:
+#   - Innenstadt
 
 # If an expose includes an address, the bot is capable of
 # displaying the distance and time to travel (duration) to
@@ -57,10 +58,10 @@ blacklist:
 #  
 # Available kinds of travel ('gm_id') can be found in the
 # Google Maps API documentation, but basically there are:
-# 	- "bicycling"
+#	- "bicycling"
 #	- "transit" (public transport)
 #	- "driving"
-#   - "walking"
+# - "walking"
 # 
 # The example configuration below includes a place for
 # "John", located at the main train station of munich.
@@ -68,21 +69,21 @@ blacklist:
 # each with a different label. Furthermore a place for
 # "Jane" is included, located at the given destination and
 # with the same kinds of travel.
-durations:
-    - name: John
-      destination: Hauptbahnhof, München
-      modes: 
-          - gm_id: transit
-            title: "Öff."
-          - gm_id: bicycling
-            title: "Rad"
-    - name: Jane
-      destination: Karlsplatz, München
-      modes: 
-          - gm_id: transit
-            title: "Öff."
-          - gm_id: driving
-            title: "Auto"
+# durations:
+#   - name: John
+#     destination: Hauptbahnhof, München
+#     modes:
+#       - gm_id: transit
+#         title: "Öff."
+#       - gm_id: bicycling
+#         title: "Rad"
+#   - name: Jane
+#     destination: Karlsplatz, München
+#     modes:
+#       - gm_id: transit
+#         title: "Öff."
+#       - gm_id: driving
+#         title: "Auto"
 
 # Multiline message (yes, the | is supposed to be there), 
 # to format the message received from the Telegram bot. 
@@ -108,36 +109,35 @@ message: |
 # To use the Google Maps API, an API key is required. You can obtain one
 # without costs from the Google App Console (just google for it).
 # Additionally, to enable the API calls in the code, set the 'enable' key to True
-google_maps_api:
-    key: YOUR_API_KEY
-    url: https://maps.googleapis.com/maps/api/distancematrix/json?origins={origin}&destinations={dest}&mode={mode}&sensor=true&key={key}&arrival_time={arrival}
-    enable: False
+#
+# google_maps_api:
+#   key: YOUR_API_KEY
+#   url: https://maps.googleapis.com/maps/api/distancematrix/json?origins={origin}&destinations={dest}&mode={mode}&sensor=true&key={key}&arrival_time={arrival}
+#   enable: False
 
 # If you are planning to scrape immoscout24.de, the bot will need 
 # to circumvent the sites captcha protection by using a captcha 
 # solving service. Register at either imagetypers or 2captcha 
 # (the former is prefered), desposit some funds, uncomment the 
 # corresponding lines below and replace your API key/token.
-# you will also have to install a Chrome Web Driver and write below 
-# the executable path, the driver_arguments can be left as is.
+# Use driver_arguments to provide options for Chrome WebDriver.
 # captcha:
-#       imagetypers:
+#       imagetyperz:
 #             token: alskdjaskldjfklj
 #       2captcha:
 #             api_key: alskdjaskldjfklj
-#       driver_path: YOUR_CHROME_DRIVER_PATH
 #       driver_arguments:
 #         - "--headless"
+captcha:
 
-# You can select whether to be notified by telegram or via a mattermost
+# You can select whether to be notified by telegram, apprise or a mattermost
 # webhook. For all notifiers selected here a configuration must be provided
 # below.
 # notifiers:
 #   - telegram
+#   - apprise
 #   - mattermost
 notifiers:
-    - telegram
-    - mattermost
 
 # Sending messages using Telegram requires a Telegram Bot configured. 
 # Telegram.org offers a good documentation about how to create a bot.
@@ -148,9 +148,11 @@ notifiers:
 #
 # telegram:
 #   bot_token: 160165XXXXXXX....
+#   notify_with_images: true
 #   receiver_ids:
 #       - 12345....
 #       - 67890....
+telegram:
 
 # Sending messages via mattermost requires a webhook url provided by a
 # mattermost server. You can find a description how to set up a webhook with
@@ -158,6 +160,17 @@ notifiers:
 # https://docs.mattermost.com/developer/webhooks-incoming.html
 # mattermost:
 #   webhook_url: https://mattermost.example.com/signup_user_complete/?id=abcdef12356
+mattermost:
+
+# Sending messages using Apprise requires an Apprise url.
+# Apprise allows to send notifications to a wide variety of services.
+# You can find a description how to set up an Apprise url with the official
+# documentation: https://github.com/caronc/apprise 
+#
+# apprise:
+#   - gotifys://...
+#   - mailto://..
+apprise:
 
 # If you are running the web interface, you can configure Login with Telegram support
 # Follow the instructions here to register your domain with the Telegram bot:
@@ -178,3 +191,10 @@ notifiers:
 # For websites like idealista.it, there are anti-crawler measures that can be
 # circumvented using proxies.
 # use_proxy_list: True
+
+# If you are having bot detection issues with immobilienscout24,
+# you can set the cookie that you get from your logged in account
+# Go to the immobilienscout24.de website, log in, and then in the developer tools
+# (F12) go to the "Network" tab, then "Cookies" and copy the value of the
+# "reese84" cookie.
+immoscout_cookie: ""

@@ -1,15 +1,16 @@
 import pytest
 import datetime
 import re
+from typing import Dict
 from mockfirestore import MockFirestore
 
 from flathunter.googlecloud_idmaintainer import GoogleCloudIdMaintainer
-from flathunter.config import Config
 from flathunter.hunter import Hunter
 from flathunter.web_hunter import WebHunter
 from flathunter.filter import Filter
-from dummy_crawler import DummyCrawler
-from test_util import count
+from test.dummy_crawler import DummyCrawler
+from test.test_util import count
+from test.utils.config import StringConfig
 
 class MockGoogleCloudIdMaintainer(GoogleCloudIdMaintainer):
 
@@ -41,7 +42,7 @@ def test_get_list_run_time_is_updated(id_watch):
     assert time == id_watch.get_last_run_time()
 
 def test_is_processed_works(id_watch):
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     config.set_searchers([DummyCrawler()])
     hunter = Hunter(config, id_watch)
     exposes = hunter.hunt_flats()
@@ -50,7 +51,7 @@ def test_is_processed_works(id_watch):
         assert id_watch.is_processed(expose['id'])
 
 def test_exposes_are_saved_to_maintainer(id_watch):
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     config.set_searchers([DummyCrawler()])
     hunter = Hunter(config, id_watch)
     exposes = hunter.hunt_flats()
@@ -60,7 +61,7 @@ def test_exposes_are_saved_to_maintainer(id_watch):
     assert count(exposes) < len(saved)
 
 def test_exposes_are_returned_as_dictionaries(id_watch):
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     config.set_searchers([DummyCrawler()])
     hunter = Hunter(config, id_watch)
     hunter.hunt_flats()
@@ -71,7 +72,7 @@ def test_exposes_are_returned_as_dictionaries(id_watch):
     assert expose['created_at'] is not None
 
 def test_exposes_are_returned_with_limit(id_watch):
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     config.set_searchers([DummyCrawler()])
     hunter = Hunter(config, id_watch)
     hunter.hunt_flats()
@@ -80,34 +81,41 @@ def test_exposes_are_returned_with_limit(id_watch):
     expose = saved[0]
     assert expose['title'] is not None
 
+def compare_int_less_equal(expose: Dict, key: str, comparison: int) -> bool:
+    value = expose.get(key, str(comparison + 1))
+    match = re.match(r'\d+', value)
+    if match is None:
+        return False
+    return int(match[0]) <= comparison
+
 def test_exposes_are_returned_filtered(id_watch):
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     config.set_searchers([DummyCrawler()])
     hunter = Hunter(config, id_watch)
     hunter.hunt_flats()
     hunter.hunt_flats()
-    filter = Filter.builder().max_size_filter(70).build()
+    filter = Filter.builder().read_config(StringConfig('{"filters":{"max_size":70}}')).build()
     saved = id_watch.get_recent_exposes(10, filter_set=filter)
     assert len(saved) == 10
     for expose in saved:
-        assert int(re.match(r'\d+', expose['size'])[0]) <= 70
+        assert compare_int_less_equal(expose, 'size', 70)
 
 def test_filters_for_user_are_saved(id_watch):
     filter = { 'fish': 'cat' }
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     hunter = WebHunter(config, id_watch)
     hunter.set_filters_for_user(123, filter)
     assert hunter.get_filters_for_user(123) == filter
 
 def test_filters_for_user_returns_none_if_none_present(id_watch):
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     hunter = WebHunter(config, id_watch)
     assert hunter.get_filters_for_user(123) == None
     assert hunter.get_filters_for_user(None) == None
 
 def test_all_filters_can_be_loaded(id_watch):
     filter = { 'fish': 'cat' }
-    config = Config(string=CONFIG_WITH_FILTERS)
+    config = StringConfig(string=CONFIG_WITH_FILTERS)
     hunter = WebHunter(config, id_watch)
     hunter.set_filters_for_user(123, filter)
     hunter.set_filters_for_user(124, filter)

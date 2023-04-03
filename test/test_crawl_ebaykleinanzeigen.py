@@ -1,7 +1,7 @@
 import pytest
 
 from flathunter.crawl_ebaykleinanzeigen import CrawlEbayKleinanzeigen
-from flathunter.config import Config
+from test.utils.config import StringConfig
 
 DUMMY_CONFIG = """
 urls:
@@ -12,7 +12,7 @@ TEST_URL = 'https://www.ebay-kleinanzeigen.de/s-wohnung-mieten/berlin/preis:1000
 
 @pytest.fixture
 def crawler():
-    return CrawlEbayKleinanzeigen(Config(string=DUMMY_CONFIG))
+    return CrawlEbayKleinanzeigen(StringConfig(string=DUMMY_CONFIG))
 
 def test_crawler(crawler):
     soup = crawler.get_page(TEST_URL)
@@ -23,7 +23,7 @@ def test_crawler(crawler):
     assert entries[0]['id'] > 0
     assert entries[0]['url'].startswith("https://www.ebay-kleinanzeigen.de/s-anzeige")
     for attr in [ 'title', 'price', 'size', 'rooms', 'address' ]:
-        assert entries[0][attr] is not None
+        assert entries[0][attr]
 
 def test_process_expose_fetches_details(crawler):
     soup = crawler.get_page(TEST_URL)
@@ -35,4 +35,4 @@ def test_process_expose_fetches_details(crawler):
     for expose in updated_entries:
         print(expose)
         for attr in [ 'title', 'price', 'size', 'rooms', 'address', 'from' ]:
-            assert expose[attr] is not None
+            assert expose[attr]

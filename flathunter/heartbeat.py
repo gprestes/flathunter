@@ -1,46 +1,58 @@
 """Providing heartbeat messages"""
-import logging
-from flathunter.config import Config
+from typing import Optional
+
+from flathunter.abstract_notifier import Notifier
+from flathunter.config import YamlConfig
+from flathunter.logging import logger
+from flathunter.sender_apprise import SenderApprise
 from flathunter.sender_mattermost import SenderMattermost
 from flathunter.sender_telegram import SenderTelegram
+from flathunter.exceptions import HeartbeatException
 
 
-def interval2counter(interval):
+def interval2counter(interval: str) -> Optional[int]:
     """Transform the string interval to sleeper counter frequencies"""
     if interval is None:
         return None
-    elif interval.lower() == 'hour':
+    if interval.lower() == 'hour':
         return 6
-    elif interval.lower() == 'day':
+    if interval.lower() == 'day':
         return 144
-    elif interval.lower() == 'week':
+    if interval.lower() == 'week':
         return 1008
-    else:
-        raise Exception("No valid heartbeat instruction received - no heartbeat messages will be sent.")
+    raise HeartbeatException(
+        "No valid heartbeat instruction received - no heartbeat messages will be sent.")
 
 
 class Heartbeat:
-    """heartbeat class - Will inform the user on regular intervals whether the bot is still alive"""
-    __log__ = logging.getLogger('flathunt')
+    """Will inform the user on regular intervals whether the bot is still alive"""
+    notifier: Notifier
+    interval: Optional[int]
 
-    def __init__(self, config, interval):
-        self.config = config
-        if not isinstance(self.config, Config):
-            raise Exception("Invalid config for hunter - should be a 'Config' object")
-        self.notifiers = self.config.get('notifiers', list())
-        if 'mattermost' in self.notifiers:
+    def __init__(self, config: YamlConfig, interval: str):
+        notifiers = config.notifiers()
+
+        if 'mattermost' in notifiers:
             self.notifier = SenderMattermost(config)
-        elif 'telegram' in self.notifiers:
+        elif 'telegram' in notifiers:
             self.notifier = SenderTelegram(config)
+        elif 'apprise' in notifiers:
+            self.notifier = SenderApprise(config)
         else:
-            self.notifier = None
+            raise HeartbeatException("No notifier configured - check 'notifiers' config section!")
+
         self.interval = interval2counter(interval)
 
-    def send_heartbeat(self, counter):
+    def send_heartbeat(self, counter) -> int:
         """Send a new heartbeat message"""
-        # its time for a new heartbeat message and reset counter
-        if self.notifier is not None and self.interval is not None:
-            if counter % self.interval == 0:
-                self.notifier.send_msg('Beep Boop. This is a heartbeat message. Your bot is searching actively for flats.')
-                counter = 0
+        if not self.notifier or not self.interval:  # interval is disabled
+            return counter
+        # it's time for a new heartbeat message and reset counter
+        if counter % self.interval == 0:
+            logger.info('Sending heartbeat message.')
+            self.notifier.notify(
+                'Beep Boop. This is a heartbeat message. '
+                'Your bot is searching actively for flats.'
+            )
+            counter = 0
         return counter

@@ -6,15 +6,15 @@
 
 import argparse
 import os
-import logging
-import sys
 import time
-from pprint import pformat
+from datetime import time as dtime
 
+from flathunter.logging import logger, configure_logging
 from flathunter.idmaintainer import IdMaintainer
 from flathunter.hunter import Hunter
-from flathunter.config import Config
+from flathunter.config import Config, Env
 from flathunter.heartbeat import Heartbeat
+from flathunter.time_utils import wait_during_period
 
 __author__ = "Jan Harrie"
 __version__ = "1.0"
@@ -22,86 +22,93 @@ __maintainer__ = "Nody"
 __email__ = "harrymcfly@protonmail.com"
 __status__ = "Production"
 
-# init logging
-if os.name == 'posix':
-    # coloring on linux
-    CYELLOW = '\033[93m'
-    CBLUE = '\033[94m'
-    COFF = '\033[0m'
-    LOG_FORMAT = '[' + CBLUE + '%(asctime)s' + COFF + '|' + CBLUE + '%(filename)-18s' + COFF + \
-                 '|' + CYELLOW + '%(levelname)-8s' + COFF + ']: %(message)s'
-else:
-    # else without color
-    LOG_FORMAT = '[%(asctime)s|%(filename)-18s|%(levelname)-8s]: %(message)s'
-logging.basicConfig(
-    format=LOG_FORMAT,
-    datefmt='%Y/%m/%d %H:%M:%S',
-    level=logging.INFO)
-__log__ = logging.getLogger('flathunt')
 
-
-def launch_flat_hunt(config, heartbeat=None):
+def launch_flat_hunt(config, heartbeat: Heartbeat):
     """Starts the crawler / notification loop"""
-    id_watch = IdMaintainer('%s/processed_ids.db' % config.database_location())
+    id_watch = IdMaintainer(f'{config.database_location()}/processed_ids.db')
+
+    time_from = dtime.fromisoformat(config.loop_pause_from())
+    time_till = dtime.fromisoformat(config.loop_pause_till())
+
+    wait_during_period(time_from, time_till)
 
     hunter = Hunter(config, id_watch)
     hunter.hunt_flats()
     counter = 0
 
-    while config.get('loop', dict()).get('active', False):
+    while config.loop_is_active():
+        wait_during_period(time_from, time_till)
+
         counter += 1
         counter = heartbeat.send_heartbeat(counter)
-        time.sleep(config.get('loop', dict()).get('sleeping_time', 60 * 10))
+        time.sleep(config.loop_period_seconds())
         hunter.hunt_flats()
 
 
 def main():
     """Processes command-line arguments, loads the config, launches the flathunter"""
-    parser = argparse.ArgumentParser(description= \
-                                         "Searches for flats on Immobilienscout24.de and wg-gesucht.de and sends " + \
-                                         "results to Telegram User", epilog="Designed by Nody")
+    parser = argparse.ArgumentParser(
+        description=("Searches for flats on Immobilienscout24.de and wg-gesucht.de"
+                     " and sends results to Telegram User"),
+        epilog="Designed by Nody"
+    )
+    if Env.FLATHUNTER_TARGET_URLS is not None:
+        default_config_path = None
+    else:
+        default_config_path = f"{os.path.dirname(os.path.abspath(__file__))}/config.yaml"
     parser.add_argument('--config', '-c',
                         type=argparse.FileType('r', encoding='UTF-8'),
-                        default='%s/config.yaml' % os.path.dirname(os.path.abspath(__file__)),
-                        help="Config file to use. If not set, try to use '%s/config.yaml' " %
-                             os.path.dirname(os.path.abspath(__file__))
+                        default=default_config_path,
+                        help=f'Config file to use. If not set, try to use "{default_config_path}"'
                         )
     parser.add_argument('--heartbeat', '-hb',
                         action='store',
                         default=None,
-                        help='Set the interval time to receive heartbeat messages to check that the bot is' + \
-                             'alive. Accepted strings are "hour", "day", "week". Defaults to None.'
+                        help=('Set the interval time to receive heartbeat messages to check'
+                              'that the bot is alive. Accepted strings are "hour", "day", "week".'
+                              'Defaults to None.')
                         )
     args = parser.parse_args()
 
     # load config
     config_handle = args.config
-    config = Config(config_handle.name)
+    if config_handle is not None:
+        config = Config(config_handle.name)
+    else:
+        config = Config()
+
+    # setup logging
+    configure_logging(config)
+
+    # initialize search plugins for config
+    config.init_searchers()
 
     # check config
-    notifiers = config.get('notifiers', list())
+    notifiers = config.notifiers()
     if 'mattermost' in notifiers \
-            and not config.get('mattermost', dict()).get('webhook_url'):
-        __log__.error("No mattermost webhook configured. Starting like this would be pointless...")
+            and not config.mattermost_webhook_url():
+        logger.error("No Mattermost webhook configured. Starting like this would be pointless...")
         return
     if 'telegram' in notifiers:
-        if not config.get('telegram', dict()).get('bot_token'):
-            __log__.error("No telegram bot token configured. Starting like this would be pointless...")
+        if not config.telegram_bot_token():
+            logger.error(
+                "No Telegram bot token configured. Starting like this would be pointless..."
+            )
             return
-        if not config.get('telegram', dict()).get('receiver_ids'):
-            __log__.warning("No telegram receivers configured - nobody will get notifications.")
-    if not config.get('urls'):
-        __log__.error("No urls configured. Starting like this would be meaningless...")
+        if len(config.telegram_receiver_ids()) == 0:
+            logger.warning("No Telegram receivers configured - nobody will get notifications.")
+    if 'apprise' in notifiers \
+            and not config.get('apprise', {}):
+        logger.error("No apprise url configured. Starting like this would be pointless...")
+        return
+
+    if len(config.target_urls()) == 0:
+        logger.error("No URLs configured. Starting like this would be pointless...")
         return
 
     # get heartbeat instructions
     heartbeat_interval = args.heartbeat
     heartbeat = Heartbeat(config, heartbeat_interval)
-
-    # adjust log level, if required
-    if config.get('verbose'):
-        __log__.setLevel(logging.DEBUG)
-        __log__.debug("Settings from config: %s", pformat(config))
 
     # start hunting for flats
     launch_flat_hunt(config, heartbeat)

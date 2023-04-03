@@ -2,7 +2,8 @@ import unittest
 import tempfile
 import os.path
 import os
-from flathunter.config import Config 
+from flathunter.config import Config
+from test.utils.config import StringConfig
 
 class ConfigTest(unittest.TestCase):
 
@@ -24,7 +25,8 @@ urls:
   - https://www.immowelt.de/liste/berlin/wohnungen/mieten?roomi=2&prima=1500&wflmi=70&sort=createdate%2Bdesc
 
 excluded_titles:
-
+  - Title
+  - Another
 """
 
     FILTERS_CONFIG = """
@@ -50,8 +52,8 @@ filters:
             config_file.flush()
             config_file.close()
             created = True
-        config = Config()
-        self.assertTrue(len(config.get('urls')) > 0, "Expected URLs in config file")
+        config = Config("config.yaml")
+        self.assertTrue(len(config.get('urls', [])) > 0, "Expected URLs in config file")
         if created:
             os.remove("config.yaml")
 
@@ -60,28 +62,28 @@ filters:
           temp.write(self.DUMMY_CONFIG)
           temp.flush()
           config = Config(temp.name) 
-       self.assertTrue(len(config.get('urls')) > 0, "Expected URLs in config file")
+       self.assertTrue(len(config.get('urls', [])) > 0, "Expected URLs in config file")
 
     def test_loads_config_from_string(self):
-       config = Config(string=self.EMPTY_FILTERS_CONFIG)
+       config = StringConfig(string=self.EMPTY_FILTERS_CONFIG)
        self.assertIsNotNone(config)
        my_filter = config.get_filter()
        self.assertIsNotNone(my_filter)
 
     def test_loads_legacy_config_from_string(self):
-       config = Config(string=self.LEGACY_FILTERS_CONFIG)
+       config = StringConfig(string=self.LEGACY_FILTERS_CONFIG)
        self.assertIsNotNone(config)
        my_filter = config.get_filter()
        self.assertIsNotNone(my_filter)
        self.assertTrue(len(my_filter.filters) > 0)
 
     def test_loads_filters_config_from_string(self):
-       config = Config(string=self.FILTERS_CONFIG)
+       config = StringConfig(string=self.FILTERS_CONFIG)
        self.assertIsNotNone(config)
        my_filter = config.get_filter()
        self.assertIsNotNone(my_filter)
 
     def test_defaults_fields(self):
-       config = Config(string=self.FILTERS_CONFIG)
+       config = StringConfig(string=self.FILTERS_CONFIG)
        self.assertIsNotNone(config)
        self.assertEqual(config.database_location(), os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + "/.."))

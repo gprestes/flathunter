@@ -1,16 +1,15 @@
 """Flathunter implementation for website"""
-import logging
-
+from flathunter.config import YamlConfig
+from flathunter.logging import logger
 from flathunter.hunter import Hunter
 from flathunter.filter import Filter
 from flathunter.processor import ProcessorChain
+from flathunter.exceptions import BotBlockedException, UserDeactivatedException
 
 class WebHunter(Hunter):
     """Flathunter implementation for website. Designed to hunt all exposes from
        all sites and save them to the database. Includes support for multiple users
        with individual filters implemented in-app"""
-
-    __log__ = logging.getLogger('flathunt')
 
     def hunt_flats(self, max_pages=1):
         """Crawl all URLs, and send notifications to users of new flats"""
@@ -35,13 +34,23 @@ class WebHunter(Hunter):
         for (user_id, settings) in self.id_watch.get_user_settings():
             if 'mute_notifications' in settings:
                 continue
-            filter_set = Filter.builder().read_config(settings).build()
-            processor_chain = ProcessorChain.builder(self.config) \
-                                            .apply_filter(filter_set) \
-                                            .send_messages([user_id]) \
-                                            .build()
-            for message in processor_chain.process(new_exposes):
-                self.__log__.debug("Sent expose %d to user %d", message['id'], user_id)
+            filter_set = Filter.builder().read_config(YamlConfig(settings)).build()
+            try:
+                processor_chain = ProcessorChain.builder(self.config) \
+                                                .apply_filter(filter_set) \
+                                                .send_messages([user_id]) \
+                                                .build()
+                for message in processor_chain.process(new_exposes):
+                    logger.debug("Sent expose %d to user %d", message['id'], user_id)
+            except BotBlockedException:
+                logger.warning("Bot has been blocked by user %d - updating settings", user_id)
+                settings["mute_notifications"] = True
+                self.id_watch.save_settings_for_user(user_id, settings)
+            except UserDeactivatedException:
+                logger.warning(
+                    "User %d has deactivated their telegram account - updating settings", user_id)
+                settings["mute_notifications"] = True
+                self.id_watch.save_settings_for_user(user_id, settings)
 
         self.id_watch.update_last_run_time()
         return list(new_exposes)

@@ -10,6 +10,7 @@ from flask_api import status
 from flathunter.web import app, log
 from flathunter.web.util import sanitize_float
 from flathunter.filter import FilterBuilder
+from flathunter.config import YamlConfig
 
 class AuthenticationError(Exception):
     """Wrapper for authentication exceptions"""
@@ -28,7 +29,7 @@ def auth_hash(params, token):
     secret = hashlib.sha256()
     secret.update(token.encode('utf-8'))
     sorted_params = collections.OrderedDict(sorted(params.items()))
-    msg = "\n".join(["{}={}".format(k, v) for k, v in sorted_params.items()])
+    msg = "\n".join([f"{k}={v}" for k, v in sorted_params.items()])
     return hmac.new(secret.digest(), msg.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
 
 def sign_hash(params, token):
@@ -71,7 +72,7 @@ def filter_for_user():
     """Load the filter for the current user"""
     if filter_values_for_user() is None:
         return None
-    return FilterBuilder().read_config({'filters': filter_values_for_user()}).build()
+    return FilterBuilder().read_config(YamlConfig({'filters': filter_values_for_user()})).build()
 
 def form_filter_values():
     """Extract the filter settings from the submitted form"""
@@ -102,7 +103,7 @@ def index():
                            last_run=hunter.get_last_run_time(), bot_name=bot_name, domain=domain,
                            login_url=generate_dummy_login_url(),
                            filters=form_values,
-                           notifications_enabled=(not notifications_muted_for_user()))
+                           notifications_enabled=not notifications_muted_for_user())
 
 @app.route('/about')
 def about():
