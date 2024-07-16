@@ -1,11 +1,10 @@
 import pytest
 import json
 import os
-import sys
 import requests_mock
 import re
 
-from flathunter.crawl_immobilienscout import CrawlImmobilienscout
+from flathunter.crawler.immobilienscout import Immobilienscout
 from flathunter.captcha.captcha_solver import CaptchaBalanceEmpty
 from test.utils.config import StringConfigWithCaptchas
 
@@ -21,7 +20,7 @@ test_config = StringConfigWithCaptchas(string=DUMMY_CONFIG)
 
 @pytest.fixture
 def crawler():
-    return CrawlImmobilienscout(test_config)
+    return Immobilienscout(test_config)
 
 def test_parse_exposes_from_json(crawler):
     with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "fixtures", "immo-scout-IS24-object.json")) as fixture:
@@ -32,8 +31,9 @@ def test_parse_exposes_from_json(crawler):
 def test_crawl_works(crawler):
     if not test_config.captcha_enabled():
         pytest.skip("Captcha solving is not enabled - skipping immoscout tests. Setup captcha solving")
-    soup = crawler.get_page(TEST_URL, crawler.driver, page_no=1)
+    soup = crawler.get_page(TEST_URL, crawler.get_driver(), page_no=1)
     assert soup is not None
+    print(soup)
     entries = crawler.extract_data(soup)
     assert entries is not None
     assert len(entries) > 0
@@ -45,7 +45,7 @@ def test_crawl_works(crawler):
 def test_process_expose_fetches_details(crawler):
     if not test_config.captcha_enabled():
         pytest.skip("Captcha solving is not enabled - skipping immoscout tests. Setup captcha solving")
-    soup = crawler.get_page(TEST_URL, crawler.driver, page_no=1)
+    soup = crawler.get_page(TEST_URL, crawler.get_driver(), page_no=1)
     assert soup is not None
     entries = crawler.extract_data(soup)
     assert entries is not None
@@ -65,4 +65,4 @@ def test_captcha_error_no_balance(crawler):
         m.post('http://2captcha.com/in.php', text='OK|asdfkjhsdf')
         m.get('http://2captcha.com/res.php', text='ERROR_ZERO_BALANCE')
         with pytest.raises(CaptchaBalanceEmpty):
-            assert crawler.get_page(TEST_URL, crawler.driver, page_no=1)
+            assert crawler.get_page(TEST_URL, crawler.get_driver(), page_no=1)

@@ -15,7 +15,8 @@ from prompt_toolkit.document import Document
 from prompt_toolkit.validation import Validator, ValidationError
 
 from flathunter.config import YamlConfig
-from flathunter import crawl_immobilienscout
+from flathunter.crawler import immobilienscout
+
 
 class ConfigurationAborted(Exception):
     """Exception to indicate the user has aborted the configuration"""
@@ -30,6 +31,7 @@ class Notifier(Enum):
     TELEGRAM = "telegram"
     MATTERMOST = "mattermost"
     APPRISE = "apprise"
+    SLACK = "slack"
 
 def welcome():
     """Display the welcome dialog"""
@@ -71,7 +73,7 @@ def gather_urls(config: YamlConfig) -> List[str]:
         clear()
         print("Enter URLs for Scraping\n")
         print("Flathunter scrapes property portals by fetching content from search URLs\n"
-            "on the websites. Visit ImmoScout, ImmoWelt, eBay-Kleinanzeigen or WG-Gesucht,\n"
+            "on the websites. Visit ImmoScout, ImmoWelt, Kleinanzeigen or WG-Gesucht,\n"
             "make a search for the flat that you are looking for (e.g. pick a city), and\n"
             "copy the URL here. You can add as many URLs as you like.\n\n")
         if len(urls) > 0:
@@ -97,6 +99,7 @@ def select_notifier(config: YamlConfig) -> str:
             (Notifier.TELEGRAM.value, "Telegram"),
             (Notifier.MATTERMOST.value, "Mattermost"),
             (Notifier.APPRISE.value, "Apprise"),
+            (Notifier.SLACK.value, "Slack"),
         ],
         title="Configure notifications",
         text="Choose a notification platform.",
@@ -183,6 +186,22 @@ def configure_apprise(config: YamlConfig) -> Dict[str, Any]:
         Notifier.APPRISE.value: [ apprise_url ]
     }
 
+def configure_slack(config: YamlConfig) -> Dict[str, Any]:
+    """Ask the user for the Slack webhook URL"""
+    clear()
+    print("Slack Webhook URL\n")
+    print("To receive messages over Slack, Flathunter will need the Webhook URL\n"
+    "of your Slack channel.\n")
+
+    webhook_url = prompt_with_default("Enter Webhook URL: ", config.slack_webhook_url())
+    if len(webhook_url) == 0:
+        raise ConfigurationAborted()
+    return {
+        Notifier.SLACK.value: {
+            "webhook_url": webhook_url
+        }
+    }
+
 def configure_notifier(notifier: str, config) -> Dict[str, Any]:
     """Configure the selected / active notifier"""
     if notifier == Notifier.TELEGRAM.value:
@@ -191,13 +210,15 @@ def configure_notifier(notifier: str, config) -> Dict[str, Any]:
         return configure_mattermost(config)
     if notifier == Notifier.APPRISE.value:
         return configure_apprise(config)
+    if notifier == Notifier.SLACK.value:
+        return configure_slack(config)
     raise ConfigurationError("Invalid Notifier Selection")
 
 def configure_captcha(urls: List[str], config: YamlConfig) -> Optional[Dict[str, Any]]:
     """Configure the captcha solver, where required"""
     is_immoscout = reduce(lambda a,b: a or b,
-        [ re.search(crawl_immobilienscout.STATIC_URL_PATTERN, url) for url in urls ],
-        False)
+                          [re.search(immobilienscout.STATIC_URL_PATTERN, url) for url in urls],
+                          False)
     if not is_immoscout:
         return None
     clear()

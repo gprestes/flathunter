@@ -1,6 +1,5 @@
 import unittest
-from functools import reduce
-from flathunter.crawl_immobiliare import CrawlImmobiliare
+from flathunter.crawler.immobiliare import Immobiliare
 from test.utils.config import StringConfig
 
 
@@ -13,7 +12,7 @@ class ImmobiliareCrawlerTest(unittest.TestCase):
     """
 
     def setUp(self):
-        self.crawler = CrawlImmobiliare(StringConfig(string=self.DUMMY_CONFIG))
+        self.crawler = Immobiliare(StringConfig(string=self.DUMMY_CONFIG))
 
     def test(self):
         soup = self.crawler.get_page(self.TEST_URL)
