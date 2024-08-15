@@ -4,5 +4,8 @@
     "matchDepTypes": ["devDependencies"],
     "automerge": true
   }],
-  "lockFileMaintenance": { "enabled": true, "extends": "schedule:daily" }
+  "lockFileMaintenance": { "enabled": true, "extends": "schedule:daily" },
+  "extends": [
+    "config:recommended"
+  ]
 }
