@@ -11,6 +11,7 @@ from selenium.webdriver import Chrome
 from flathunter.abstract_crawler import Crawler
 from flathunter.logging import logger
 from flathunter.chrome_wrapper import get_chrome_driver
+from flathunter.captcha.twocaptcha_solver import TwoCaptchaSolver
 from flathunter.exceptions import DriverLoadException
 
 STATIC_URL_PATTERN = re.compile(r'https://www\.immobilienscout24\.de')
@@ -124,6 +125,7 @@ class Immobilienscout(Crawler):
                 logger.error(
                     "IS24 bot detection has identified our script as a bot - we've been blocked"
                 )
+                logger.debug(self.get_driver_force().page_source)
             return []
         return self.get_entries_from_json(result_json)
 
@@ -182,6 +184,12 @@ class Immobilienscout(Crawler):
 
     def get_expose_details(self, expose):
         """Loads additional details for an expose by processing the expose detail URL"""
+        if self.config.captcha_enabled():
+            # Currently (December 2024) the captcha triggers on every page request when
+            # solving with Capmonster (2captcha isn't working). It would be very expensive
+            # to solve a captcha for every single expose URL, so we skip here in the interests
+            # of saving money
+            return expose
         soup = self.get_soup_from_url(expose['url'])
         date = soup.find('dd', {"class": "is24qa-bezugsfrei-ab"})
         expose['from'] = datetime.datetime.now().strftime("%2d.%2m.%Y")

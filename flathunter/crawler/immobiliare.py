@@ -20,12 +20,12 @@ class Immobiliare(Crawler):
         entries = []
 
         results = soup.find(
-            'ul', {"class": "in-realEstateResults"})
+            'ul', {"data-cy": "search-layout-list"})
 
-        items = results.select("div.in-reListCard")
+        items = results.select("div.in-listingCard")
 
         for row in items:
-            title_row = row.find('a', {"class": "in-reListCard__title"})
+            title_row = row.find('a', {"class": "in-listingCardTitle"})
             title = title_row.text.strip()
             url = title_row['href']
             flat_id = title_row['href'].split("/")[-2:][0]
@@ -37,10 +37,10 @@ class Immobiliare(Crawler):
             # 0: number of rooms
             # 1: size of the apartment
             details_list = row.find_all(
-                "div", {"class": "in-reListCardFeatureList__item"})
+                "div", {"class": "in-listingCardFeatureList__item"})
 
             price_li = row.find(
-                "div", {"class": "in-reListCardPrice"})
+                "div", {"class": "in-listingCardPrice"})
 
             price_re = re.match(
                 r".*\s([0-9]+.*)$",
@@ -55,7 +55,7 @@ class Immobiliare(Crawler):
 
             detail_texts = [ item.find("span").text.strip() for item in details_list ]
             room_counts = [ match.group(1) for text in detail_texts
-                if (match := re.match(r"(\d+) local[ie]", text)) is not None ]
+                if (match := re.match(r"(\d+)\+? local[ie]", text)) is not None ]
             if len(room_counts) > 0:
                 rooms = room_counts[0]
             else:

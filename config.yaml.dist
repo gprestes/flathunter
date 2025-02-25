@@ -17,7 +17,7 @@ loop:
 
 # List the URLs containing your filter properties below.
 # Currently supported services: www.immobilienscout24.de,
-# www.immowelt.de, www.wg-gesucht.de, www.kleinanzeigen.de, meinestadt.de and vrm-immo.de.
+# www.immowelt.de, www.wg-gesucht.de, www.kleinanzeigen.de and vrm-immo.de.
 # List the URLs in the following format:
 # urls:
 # 	- https://www.immobilienscout24.de/Suche/...
@@ -43,13 +43,6 @@ urls:
 #   max_size: 80
 #   max_price_per_square: 1000
 filters:
-
-# There are often city districts in the address which
-# Google Maps does not like. Use this blacklist to remove
-# districts from the search.
-#
-# blacklist:
-#   - Innenstadt
 
 # If an expose includes an address, the bot is capable of
 # displaying the distance and time to travel (duration) to
@@ -123,14 +116,16 @@ title: "{crawler}: {title}"
 
 # If you are planning to scrape immoscout24.de, the bot will need
 # to circumvent the sites captcha protection by using a captcha
-# solving service. Register at either imagetypers or 2captcha
-# (the former is prefered), desposit some funds, uncomment the
-# corresponding lines below and replace your API key/token.
-# Use driver_arguments to provide options for Chrome WebDriver.
+# solving service. Register at either imagetypers, 2captcha or
+# capmonster (as at December 2024, Capmonster is prefered), desposit
+# some funds, uncomment the corresponding lines below and replace your
+# API key/token. Use driver_arguments to provide options for Chrome WebDriver.
 # captcha:
 #       imagetyperz:
 #             token: alskdjaskldjfklj
 #       2captcha:
+#             api_key: alskdjaskldjfklj
+#       capmonster:
 #             api_key: alskdjaskldjfklj
 #       driver_arguments:
 #         - "--headless"

@@ -170,7 +170,7 @@ class WgGesucht(Crawler):
         self.config = config
 
     # pylint: disable=too-many-locals
-    def extract_data(self, soup: BeautifulSoup):
+    def extract_data(self, soup: BeautifulSoup) -> List[Dict]:
         """Extracts all exposes from a provided Soup object"""
         entries = []
 
