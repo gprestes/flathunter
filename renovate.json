@@ -1,10 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "packageRules": [{
-    "matchDepTypes": ["devDependencies"],
-    "automerge": true
-  }],
-  "lockFileMaintenance": { "enabled": true, "extends": "schedule:daily" },
   "extends": [
     "config:recommended"
   ]
